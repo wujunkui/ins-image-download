@@ -55,7 +55,7 @@ async def reply(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
 def main() -> None:
     """Start the bot."""
     # Create the Application and pass it your bot's token.
-    application = Application.builder().token(Setting.TOKEN).read_timeout(7).get_updates_read_timeout(42).build()
+    application = Application.builder().token(Setting.TOKEN).build()
 
     # on different commands - answer in Telegram
     application.add_handler(CommandHandler("help", help_command))
@@ -64,7 +64,7 @@ def main() -> None:
     application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, reply))
 
     # Run the bot until the user presses Ctrl-C
-    application.run_polling(bootstrap_retries=5, allowed_updates=Update.ALL_TYPES)
+    application.run_polling(allowed_updates=Update.ALL_TYPES)
 
 
 if __name__ == "__main__":
