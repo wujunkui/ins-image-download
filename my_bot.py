@@ -1,10 +1,15 @@
+import asyncio
 import os
 import logging
-
+from typing import Optional
 
 import validators
 from telegram import ForceReply, Update, InputMediaPhoto
+from telegram.request import BaseRequest, HTTPXRequest, RequestData
+
 from telegram.ext import Application, CommandHandler, ContextTypes, MessageHandler, filters
+from telegram._utils.types import HTTPVersion, ODVInput, SocketOpt
+from telegram.error import NetworkError, TimedOut
 
 from config import Setting
 from download_by_tiqu import TiQuRequest
@@ -20,9 +25,30 @@ logging.basicConfig(
     format="%(asctime)s - %(name)s - %(levelname)s - %(message)s", level=logging.INFO
 )
 # set higher logging level for httpx to avoid all GET and POST requests being logged
-logging.getLogger("httpx").setLevel(logging.WARNING)
+logging.getLogger("httpx").setLevel(logging.INFO)
 
 logger = logging.getLogger(__name__)
+
+
+class MyRetryRequest(HTTPXRequest):
+
+    async def do_request(self,
+                         url: str,
+                         method: str,
+                         request_data: Optional[RequestData] = None,
+                         read_timeout: ODVInput[float] = BaseRequest.DEFAULT_NONE,
+                         write_timeout: ODVInput[float] = BaseRequest.DEFAULT_NONE,
+                         connect_timeout: ODVInput[float] = BaseRequest.DEFAULT_NONE,
+                         pool_timeout: ODVInput[float] = BaseRequest.DEFAULT_NONE, ):
+        retry_times = 5
+        delay = 1
+        for i in range(retry_times):
+            logger.info(f'retry times: {i}')
+            try:
+                return await super().do_request(url, method, request_data, read_timeout, write_timeout, connect_timeout,
+                                                pool_timeout)
+            except NetworkError:
+                await asyncio.sleep(delay)
 
 
 async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
@@ -55,12 +81,14 @@ async def reply(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
 def main() -> None:
     """Start the bot."""
     # Create the Application and pass it your bot's token.
-    application = Application.builder().token(Setting.TOKEN).build()
+
+    application = Application.builder().token(Setting.TOKEN).get_updates_proxy(
+        os.environ.get("http_proxy")).get_updates_connection_pool_size(10).get_updates_pool_timeout(30).build()
 
     # on different commands - answer in Telegram
     application.add_handler(CommandHandler("help", help_command))
 
-    # on non command i.e message - echo the message on Telegram
+    # on non command i.e. message - echo the message on Telegram
     application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, reply))
 
     # Run the bot until the user presses Ctrl-C
