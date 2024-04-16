@@ -14,12 +14,6 @@ from telegram.error import NetworkError, TimedOut
 from config import Setting
 from download_by_tiqu import TiQuRequest
 
-# add vpn support
-
-os.environ['http_proxy'] = "http://127.0.0.1:7890"
-os.environ['https_proxy'] = "http://127.0.0.1:7890"
-os.environ['all_proxy'] = "http://127.0.0.1:7890"
-
 # Enable logging
 logging.basicConfig(
     format="%(asctime)s - %(name)s - %(levelname)s - %(message)s", level=logging.INFO
@@ -28,6 +22,13 @@ logging.basicConfig(
 logging.getLogger("httpx").setLevel(logging.INFO)
 
 logger = logging.getLogger(__name__)
+
+if Setting.use_proxy:
+    # add vpn support
+    logger.info("Use Proxy")
+    os.environ['http_proxy'] = "http://127.0.0.1:7890"
+    os.environ['https_proxy'] = "http://127.0.0.1:7890"
+    os.environ['all_proxy'] = "http://127.0.0.1:7890"
 
 
 class MyRetryRequest(HTTPXRequest):
@@ -82,8 +83,8 @@ def main() -> None:
     """Start the bot."""
     # Create the Application and pass it your bot's token.
 
-    application = Application.builder().token(Setting.TOKEN).get_updates_proxy(
-        os.environ.get("http_proxy")).get_updates_connection_pool_size(10).get_updates_pool_timeout(30).build()
+    application = Application.builder().token(Setting.TOKEN).get_updates_connection_pool_size(
+        10).get_updates_pool_timeout(30).build()
 
     # on different commands - answer in Telegram
     application.add_handler(CommandHandler("help", help_command))
