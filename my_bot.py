@@ -79,7 +79,7 @@ async def reply(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     # 3. reply
     split_send = False
     try:
-        await update.message.reply_media_group(media=media_lst, caption="test")
+        await update.message.reply_media_group(media=media_lst)
     except Exception as e:
         logger.error(e)
         split_send = True
