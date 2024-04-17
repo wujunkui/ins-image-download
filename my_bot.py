@@ -1,15 +1,17 @@
 import asyncio
 import os
 import logging
+import traceback
 from typing import Optional
 
 import validators
-from telegram import ForceReply, Update, InputMediaPhoto
+from telegram import Update
 from telegram.request import BaseRequest, HTTPXRequest, RequestData
 
 from telegram.ext import Application, CommandHandler, ContextTypes, MessageHandler, filters
-from telegram._utils.types import HTTPVersion, ODVInput, SocketOpt
-from telegram.error import NetworkError, TimedOut
+from telegram._utils.types import ODVInput
+from telegram.error import NetworkError
+from loguru import logger
 
 from config import Setting
 from download_by_tiqu import TiQuRequest
@@ -21,7 +23,7 @@ logging.basicConfig(
 # set higher logging level for httpx to avoid all GET and POST requests being logged
 logging.getLogger("httpx").setLevel(logging.INFO)
 
-logger = logging.getLogger(__name__)
+logger.add("error.log", rotation="1 week", level="ERROR")
 
 if Setting.use_proxy:
     # add vpn support
@@ -71,10 +73,31 @@ async def reply(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         media_lst = media_getter.get_medias(link)
     except Exception as e:
         logger.error(e)
-        await update.message.reply_text("Sorry, Please try again later.")
+        await update.message.reply_text("提取视频/图片失败，请稍后再试。\nSorry, Please try again later.")
         return
+    await update.message.reply_text(f"提取到{len(media_lst)}个媒体，正在发送，请稍后...")
     # 3. reply
-    await update.message.reply_media_group(media=media_lst)
+    split_send = False
+    try:
+        await update.message.reply_media_group(media=media_lst, caption="test")
+    except Exception as e:
+        logger.error(e)
+        split_send = True
+
+    if not split_send:
+        return
+    await update.message.reply_text("打包发送失败，正在单个发送...")
+    error_num = 0
+    for media in media_lst:
+        try:
+            await update.message.reply_media_group([media])
+        except Exception as e:
+            logger.error(e)
+            logger.error(traceback.format_exc())
+            logger.error(media.media)
+            error_num += 1
+    await update.message.reply_text(f"共{len(media_lst)}个媒体，失败{error_num}个")
+
     # await update.message.reply_photo(photo=url)
     # await update.message.reply_document(document=url)
 
@@ -84,7 +107,7 @@ def main() -> None:
     # Create the Application and pass it your bot's token.
 
     application = Application.builder().token(Setting.TOKEN).get_updates_connection_pool_size(
-        10).get_updates_pool_timeout(30).build()
+        20).get_updates_pool_timeout(30).build()
 
     # on different commands - answer in Telegram
     application.add_handler(CommandHandler("help", help_command))

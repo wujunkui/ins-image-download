@@ -62,7 +62,7 @@ class TiQuRequest:
         url_lst = [row['url'] for row in images]
         return url_lst
 
-    def get_medias(self, instagram_url: str) -> list | None:
+    def get_medias(self, instagram_url: str) -> list[InputMediaVideo | InputMediaPhoto] | None:
         media_lst = []
         data_dict = self.request(instagram_url)
         if data_dict['err'] != 0:

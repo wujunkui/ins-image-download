@@ -2,3 +2,6 @@ cache.json
 .env
 .idea
 __pycache__
+
+# log files
+*.log
