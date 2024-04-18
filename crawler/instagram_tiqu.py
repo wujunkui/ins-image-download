@@ -1,36 +1,19 @@
 import time
-import json
 
 import requests
 
 from loguru import logger
 from telegram import InputMediaPhoto, InputMediaVideo
 
-from get_sign import generate_signature
-
-CACHE_FILE = './cache.json'
+from utils.get_sign import generate_signature
+from utils.tools import persist_to_file_sync
 
 
 class APIError(Exception):
     pass
 
 
-def persist_to_file_sync(original_func):
-    try:
-        cache = json.load(open(CACHE_FILE, 'r'))
-    except (IOError, ValueError):
-        cache = {}
-
-    def decorator(_, param):
-        if param not in cache:
-            cache[param] = original_func(_, param)
-            json.dump(cache, open(CACHE_FILE, 'w'))
-        return cache[param]
-
-    return decorator
-
-
-class TiQuRequest:
+class InstagramCrawler:
     def __init__(self):
         self.url_head = "https://wapi.tiqu.cc/api/all/"
         self.secret_token = "bfa95f704ce74c5cba31820ea1c0da05"
@@ -74,8 +57,3 @@ class TiQuRequest:
             for row in data_dict['videos']:
                 media_lst.append(InputMediaVideo(row['url']))
         return media_lst
-
-
-if __name__ == '__main__':
-    Tiqu = TiQuRequest()
-    print(Tiqu.request("https://www.instagram.com/reel/C5vHrCJSWXg/?igsh=MW1lMGoyYnk0dnpvNg=="))
