@@ -7,7 +7,6 @@ def generate_signature(data, secret_key):
     # 将字典的键排序并拼接成URL编码格式的字符串
     sorted_data = sorted(data.items())
     sorted_str = '&'.join(f"{key}={value}" for key, value in sorted_data)
-    print(sorted_str)
     # 创建HMAC-SHA256哈希
     signed_hmac_sha256 = hmac.HMAC(secret_key.encode(), sorted_str.encode(), hashlib.sha256)
 

@@ -1,6 +1,7 @@
 import asyncio
 import os
 import logging
+import re
 import traceback
 from typing import Optional
 
@@ -14,7 +15,9 @@ from telegram.error import NetworkError
 from loguru import logger
 
 from config import Setting
-from download_by_tiqu import TiQuRequest
+from crawler.instagram_tiqu import InstagramCrawler
+from crawler.xhs import XHSCrawler
+from utils import tools
 
 # Enable logging
 logging.basicConfig(
@@ -60,17 +63,23 @@ async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
 
 
 async def reply(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    # 1. check the link valid
-    link = update.message.text.strip()
-    is_valid_link = validators.url(link)
-    if not is_valid_link:
-        await update.message.reply_text("Invalid link!(你输入的instagram链接有误，请重新输入)")
+
+    # 1. get the link from text and match the crawler
+    text = update.message.text.strip()
+    link = tools.get_link_from_text(text)
+
+    if not link:
+        await update.message.reply_text("Invalid link!(你输入的链接有误，请重新输入)")
         return
+    if re.search(r"xhslink.com", link):
+        crawler = XHSCrawler()
+    else:
+        crawler = InstagramCrawler()
+
     # 2. get the url
-    media_getter = TiQuRequest()
     # asyncio.create_task(update.message.reply_text("Please wait..."))
     try:
-        media_lst = media_getter.get_medias(link)
+        media_lst = crawler.get_medias(link)
     except Exception as e:
         logger.error(e)
         await update.message.reply_text("提取视频/图片失败，请稍后再试。\nSorry, Please try again later.")
